@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webrtc.backend.fullname" . }}
+  labels:
+    {{- include "webrtc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "webrtc.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "webrtc.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.port }}
+              protocol: TCP
+          env:
+            - name: SIP_SERVER
+              value: {{ .Values.backend.env.SIP_SERVER | quote }}
+            - name: SIP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "webrtc.backend.fullname" . }}-sip
+                  key: SIP_USERNAME
+            - name: SIP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "webrtc.backend.fullname" . }}-sip
+                  key: SIP_PASSWORD
+            - name: SIP_DOMAIN
+              value: {{ .Values.backend.env.SIP_DOMAIN | quote }}
+            - name: LISTEN_ADDR
+              value: {{ .Values.backend.env.LISTEN_ADDR | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.backend.env.LOG_LEVEL | quote }}
+            - name: API_BASE_PATH
+              value: {{ .Values.backend.env.API_BASE_PATH | quote }}
+          {{- with .Values.backend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
