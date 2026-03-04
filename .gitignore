@@ -10,6 +10,8 @@ vendor/
 *.log
 dist/
 bin/
+backend/server
+frontend/server
 # Docker build artifacts
 *.tar
 # Go test artifacts
