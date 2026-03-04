@@ -18,6 +18,21 @@ jobs:
       - name: Package Helm chart
         run: |
           helm package charts/webrtc -d .helm-packages
+      - name: Ensure gh-pages branch exists
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages; then
+            echo "gh-pages branch already exists"
+          else
+            echo "gh-pages branch does not exist, creating it"
+            CURRENT_HEAD=$(git rev-parse HEAD)
+            git checkout --orphan gh-pages
+            git reset --hard
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Initial gh-pages commit"
+            git push origin gh-pages || { echo "Failed to push gh-pages branch"; exit 1; }
+            git checkout "$CURRENT_HEAD"
+          fi
       - name: Checkout gh-pages
         uses: actions/checkout@v4
         with:
