@@ -127,15 +127,14 @@ All external traffic enters through Traefik on port 80:
 
 ## Container Images
 
-Images are automatically built and pushed to the GitHub Container Registry (GHCR) on every push to `main` or on version tag pushes matching `v*`.
+Images are automatically built on every push to `main` and on pull requests (to validate the build). Images are only **pushed** to the GitHub Container Registry (GHCR) when a version tag matching `x.x.x` (e.g. `1.2.3`) is created.
 
 - `ghcr.io/dkrizic/webrtc-backend`
 - `ghcr.io/dkrizic/webrtc-frontend`
 
 Tag strategy:
-- Git tag `v1.2.3` → image tag `1.2.3`
-- Push to `main` → image tag `sha-<short-sha>`
-- Push to `main` → also tagged `latest`
+- Git tag `1.2.3` → image tags `1.2.3` and `latest`
+- Push to `main` or pull request → build only (not pushed to registry)
 
 ## Testing
 
