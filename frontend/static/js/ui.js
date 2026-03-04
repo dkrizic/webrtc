@@ -1,6 +1,7 @@
 // ui.js - DOM manipulation and status display
 const UI = (() => {
     const sipStatus = document.getElementById('sip-status');
+    const sipPhoneNumber = document.getElementById('sip-phone-number');
     const incomingCallDiv = document.getElementById('incoming-call');
     const callerIdSpan = document.getElementById('caller-id');
     const activeCallDiv = document.getElementById('active-call');
@@ -11,14 +12,21 @@ const UI = (() => {
     let callTimer = null;
     let callSeconds = 0;
 
-    function setConnected(connected) {
-        if (connected) {
+    function setSipStatus(status) {
+        if (status === 'registered') {
             sipStatus.textContent = 'SIP: Connected ✅';
             sipStatus.className = 'status-indicator connected';
-        } else {
+        } else if (status === 'disconnected') {
             sipStatus.textContent = 'SIP: Disconnected ❌';
             sipStatus.className = 'status-indicator disconnected';
+        } else {
+            sipStatus.textContent = 'SIP: Unregistered 🟡';
+            sipStatus.className = 'status-indicator uncertain';
         }
+    }
+
+    function setPhoneNumber(number) {
+        sipPhoneNumber.textContent = number ? ' | ' + number : '';
     }
 
     function showIncomingCall(callerId) {
@@ -54,5 +62,5 @@ const UI = (() => {
         callLogList.insertBefore(li, callLogList.firstChild);
     }
 
-    return { setConnected, showIncomingCall, hideIncomingCall, showActiveCall, hideActiveCall, addCallLogEntry };
+    return { setSipStatus, setPhoneNumber, showIncomingCall, hideIncomingCall, showActiveCall, hideActiveCall, addCallLogEntry };
 })();

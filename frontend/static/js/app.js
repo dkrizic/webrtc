@@ -1,22 +1,37 @@
 // app.js - Main application logic
 (function() {
     let currentCall = null;
+    let statusPollInterval = null;
+
+    function pollStatus() {
+        fetch('/api/status')
+            .then(r => r.json())
+            .then(data => {
+                UI.setSipStatus(data.sip || 'unregistered');
+                UI.setPhoneNumber(data.phone_number || '');
+            })
+            .catch(err => console.warn('[App] status poll failed:', err));
+    }
 
     // Wire signaling events
     Signaling.on('onopen', () => {
-        UI.setConnected(true);
+        UI.setSipStatus('unregistered');
         UI.addCallLogEntry('Connected to server');
+        pollStatus();
+        statusPollInterval = setInterval(pollStatus, 5000);
     });
 
     Signaling.on('onclose', () => {
-        UI.setConnected(false);
+        UI.setSipStatus('disconnected');
         UI.addCallLogEntry('Disconnected from server');
+        if (statusPollInterval) { clearInterval(statusPollInterval); statusPollInterval = null; }
     });
 
     Signaling.on('onmessage', (msg) => {
         switch (msg.type) {
             case 'status':
                 console.log('[App] status:', msg.data);
+                if (msg.data) { UI.setSipStatus(msg.data); }
                 break;
             case 'answer':
                 WebRTCClient.handleAnswer(msg.payload);
