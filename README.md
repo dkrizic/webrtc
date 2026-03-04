@@ -60,7 +60,31 @@ graph TD
 
 ## Architecture
 
-The application consists of three services managed by Docker Compose:
+The application consists of three services managed by Docker Compose or Kubernetes (Helm):
+
+```mermaid
+graph LR
+    User[👤 User / Browser]
+
+    subgraph Ingress
+      TR[Traefik / Ingress]
+    end
+
+    subgraph App
+      FE[Frontend<br/>:3000]
+      BE[Backend<br/>:8080]
+    end
+
+    subgraph Telephony
+      SIP[SIP Server]
+    end
+
+    User -->|HTTP :80| TR
+    TR -->|/api/* /ws| BE
+    TR -->|/| FE
+    FE -->|health check| BE
+    BE -->|SIP| SIP
+```
 
 - **Traefik** — reverse proxy listening on port 80, routing traffic to frontend and backend based on path prefix
 - **Frontend** — Go static file server serving the HTML/JS application
@@ -86,16 +110,24 @@ The frontend is a simple HTML/JavaScript application that allows users to make a
 
 The frontend will attempt to reach the backend health endpoint (`BACKEND_URL + /api/health`) up to 5 times with 2-second delays before starting. If the backend is unreachable after all retries, the frontend exits with a non-zero code.
 
+## Quickstart
+
+```bash
+docker-compose up --build
+```
+
+Then open [http://localhost](http://localhost) in your browser.
+
 ## Configuration
 
 ### Backend environment variables
 
 | Variable        | Default  | Required | Description                         |
 |-----------------|----------|----------|-------------------------------------|
-| `SIP_SERVER`    | —        | Yes      | SIP server address                  |
-| `SIP_USERNAME`  | —        | Yes      | SIP username                        |
-| `SIP_PASSWORD`  | —        | Yes      | SIP password                        |
-| `SIP_DOMAIN`    | —        | Yes      | SIP domain                          |
+| `SIP_SERVER`    | —        | Yes      | SIP server address (host:port)      |
+| `SIP_USERNAME`  | —        | Yes      | SIP authentication username         |
+| `SIP_PASSWORD`  | —        | Yes      | SIP authentication password         |
+| `SIP_DOMAIN`    | —        | Yes      | SIP domain for registration         |
 | `LISTEN_ADDR`   | `:8080`  | No       | HTTP listen address                 |
 | `LOG_LEVEL`     | `info`   | No       | Log level (`debug`, `info`, `warn`, `error`) |
 | `API_BASE_PATH` | `/api`   | No       | Base path prefix for API endpoints  |
@@ -108,13 +140,34 @@ The frontend will attempt to reach the backend health endpoint (`BACKEND_URL + /
 | `LISTEN_ADDR`  | `:3000`               | No       | HTTP listen address                  |
 | `LOG_LEVEL`    | `info`                | No       | Log level (`debug`, `info`, `warn`, `error`) |
 
-## Quickstart
+## Kubernetes / Helm Deployment
+
+The Helm chart is located in `charts/webrtc` and published to the GitHub Pages Helm repository.
+
+### Add the Helm repository
 
 ```bash
-docker-compose up --build
+helm repo add dkrizic https://dkrizic.github.io/webrtc
+helm repo update
 ```
 
-Then open [http://localhost](http://localhost) in your browser.
+### Install the chart
+
+```bash
+helm install webrtc dkrizic/webrtc \
+  --set backend.env.SIP_SERVER=sip.example.com:6050 \
+  --set backend.env.SIP_USERNAME=myuser \
+  --set backend.env.SIP_PASSWORD=mypassword \
+  --set backend.env.SIP_DOMAIN=sip.example.com
+```
+
+Key chart values:
+- `backend.env.SIP_SERVER` — SIP server address (required)
+- `backend.env.SIP_USERNAME` — SIP username (required)
+- `backend.env.SIP_PASSWORD` — SIP password (required)
+- `backend.env.SIP_DOMAIN` — SIP domain (required)
+- `ingress.enabled` — enable Ingress resource (default: `false`)
+- `ingress.hosts` — list of hostnames for the Ingress
 
 ## Routing
 
@@ -150,3 +203,34 @@ curl http://localhost/api/health
 # Backend status
 curl http://localhost/api/status
 ```
+
+## Troubleshooting
+
+### SIP registration issues
+
+Check the backend logs:
+
+```bash
+docker-compose logs backend | grep "registration"
+```
+
+Common errors:
+
+| Log message | Cause | Action |
+|-------------|-------|--------|
+| `REGISTER failed` with status 403 | Wrong password | Update `SIP_PASSWORD` |
+| `received 401 Unauthorized` | Digest auth challenge (normal) | Wait for `registration successful` |
+| `no response to initial REGISTER` | Network/firewall issue | Check UDP port connectivity to SIP server |
+
+### Log filtering
+
+```bash
+# Real-time backend logs
+docker-compose logs -f backend
+
+# Filter by keyword
+docker-compose logs backend | grep "SIP:"
+docker-compose logs backend | grep "registration"
+docker-compose logs backend | grep "ERROR"
+```
+
