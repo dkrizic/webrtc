@@ -1,0 +1,50 @@
+backend:
+  image:
+    repository: ghcr.io/dkrizic/webrtc-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8080
+  env:
+    SIP_SERVER: ""
+    SIP_USERNAME: ""
+    SIP_PASSWORD: ""
+    SIP_DOMAIN: ""
+    LISTEN_ADDR: ":8080"
+    LOG_LEVEL: "info"
+    API_BASE_PATH: "/api"
+  resources: {}
+
+frontend:
+  image:
+    repository: ghcr.io/dkrizic/webrtc-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 3000
+  env:
+    LISTEN_ADDR: ":3000"
+    LOG_LEVEL: "info"
+  resources: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: webrtc.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /ws
+          pathType: Prefix
+          service: backend
+        - path: /
+          pathType: Prefix
+          service: frontend
+  tls: []

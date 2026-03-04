@@ -1,0 +1,25 @@
+Thank you for installing {{ .Chart.Name }}!
+
+The WebRTC SIP telephony application has been deployed.
+
+Frontend service: {{ include "webrtc.frontend.fullname" . }}
+Backend service:  {{ include "webrtc.backend.fullname" . }}
+
+{{- if .Values.ingress.enabled }}
+The application is accessible via the configured Ingress:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+To access the frontend, run:
+
+  kubectl port-forward svc/{{ include "webrtc.frontend.fullname" . }} 3000:{{ .Values.frontend.service.port }}
+
+Then open http://localhost:3000 in your browser.
+{{- end }}
+
+To configure SIP credentials, set the following values:
+  --set backend.env.SIP_SERVER=<sip-server>
+  --set backend.env.SIP_USERNAME=<username>
+  --set backend.env.SIP_PASSWORD=<password>
+  --set backend.env.SIP_DOMAIN=<domain>
