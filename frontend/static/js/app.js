@@ -46,12 +46,18 @@
         if (!number) return;
         currentCall = number;
         UI.addCallLogEntry('Dialing ' + number);
-        const offer = await WebRTCClient.startCall((candidate) => {
-            Signaling.send({ type: 'ice', payload: candidate });
-        });
-        Signaling.send({ type: 'dial', payload: { to: number } });
-        Signaling.send({ type: 'offer', payload: offer });
-        UI.showActiveCall(number);
+        try {
+            const offer = await WebRTCClient.startCall((candidate) => {
+                Signaling.send({ type: 'ice', payload: candidate });
+            });
+            Signaling.send({ type: 'dial', payload: { to: number } });
+            Signaling.send({ type: 'offer', payload: offer });
+            UI.showActiveCall(number);
+        } catch (e) {
+            console.error('[App] dial failed', e);
+            UI.addCallLogEntry('Failed to dial ' + number + ': ' + e.message);
+            currentCall = null;
+        }
     });
 
     // Hangup button
@@ -66,11 +72,18 @@
     // Accept button
     document.getElementById('accept-btn').addEventListener('click', async () => {
         UI.hideIncomingCall();
-        const offer = await WebRTCClient.startCall((candidate) => {
-            Signaling.send({ type: 'ice', payload: candidate });
-        });
-        Signaling.send({ type: 'answer', payload: offer });
-        UI.showActiveCall(currentCall || 'Incoming');
+        // TODO: when backend sends SDP offer on incoming call, use handleAnswer/setRemoteDescription
+        // and send back an answer. For now this is a stub that initiates media and notifies the backend.
+        try {
+            const offer = await WebRTCClient.startCall((candidate) => {
+                Signaling.send({ type: 'ice', payload: candidate });
+            });
+            Signaling.send({ type: 'answer', payload: offer });
+            UI.showActiveCall(currentCall || 'Incoming');
+        } catch (e) {
+            console.error('[App] accept call failed', e);
+            UI.addCallLogEntry('Failed to accept call: ' + e.message);
+        }
     });
 
     // Reject button

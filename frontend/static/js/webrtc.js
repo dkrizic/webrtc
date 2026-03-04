@@ -37,6 +37,9 @@ const WebRTCClient = (() => {
             stream.getTracks().forEach(track => pc.addTrack(track, stream));
         } catch (e) {
             console.error('[WebRTC] getUserMedia failed', e);
+            pc.close();
+            pc = null;
+            throw e;
         }
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);

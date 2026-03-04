@@ -8,12 +8,16 @@ import (
 
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		slog.ErrorContext(r.Context(), "health encode error", "error", err)
+	}
 	slog.InfoContext(r.Context(), "health check")
 }
 
 func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"sip": "unregistered"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"sip": "unregistered"}); err != nil {
+		slog.ErrorContext(r.Context(), "status encode error", "error", err)
+	}
 	slog.InfoContext(r.Context(), "status check")
 }
