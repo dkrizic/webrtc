@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 
 	"github.com/dkrizic/webrtc/backend/internal/api"
+	"github.com/dkrizic/webrtc/backend/internal/bridge"
 	"github.com/dkrizic/webrtc/backend/internal/config"
+	"github.com/dkrizic/webrtc/backend/internal/signaling"
+	"github.com/dkrizic/webrtc/backend/internal/sip"
 	"github.com/urfave/cli/v2"
 )
 
@@ -66,7 +70,26 @@ func main() {
 
 			slog.Info("starting webrtc-backend", "listen", cfg.ListenAddr, "log-level", cfg.LogLevel, "api-base-path", cfg.APIBasePath)
 
-			router := api.NewRouter(cfg)
+			sipClient := sip.New(cfg)
+			hub := signaling.NewHub(nil)
+			br := bridge.New(hub, sipClient)
+			hub.SetRouter(br)
+
+			ctx := context.Background()
+			if err := br.Start(ctx); err != nil {
+				return fmt.Errorf("bridge start failed: %w", err)
+			}
+
+			go func() {
+				if err := sipClient.Register(ctx); err != nil {
+					slog.Warn("SIP registration failed", "error", err)
+				}
+				if err := sipClient.ListenIncoming(ctx); err != nil {
+					slog.Error("SIP listen failed", "error", err)
+				}
+			}()
+
+			router := api.NewRouterWithHub(cfg, hub)
 			slog.Info("server started", "addr", cfg.ListenAddr)
 			return http.ListenAndServe(cfg.ListenAddr, router)
 		},
