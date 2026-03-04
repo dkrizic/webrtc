@@ -7,3 +7,5 @@
 * Use https://github.com/urfave/cli for parsing command line arguments and environment variables
 * Backend lives in /backend, frontend in /frontend.
 * Use Dockerfiles with Multi-stage builds for both frontend and backend, with a docker-compose file for local development.
+* Always use minor version for docker image dependencies
+

@@ -1,6 +1,6 @@
 module github.com/dkrizic/webrtc/frontend
 
-go 1.24.13
+go 1.26.0
 
 require github.com/urfave/cli/v2 v2.27.7
 
