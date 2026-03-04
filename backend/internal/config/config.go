@@ -7,4 +7,5 @@ type Config struct {
 	SIPDomain   string
 	ListenAddr  string
 	LogLevel    string
+	APIBasePath string
 }

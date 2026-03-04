@@ -1,5 +1,18 @@
 version: "3.9"
 services:
+  traefik:
+    image: traefik:v3.2
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - webrtc
+
   backend:
     build:
       context: ./backend
@@ -10,8 +23,12 @@ services:
       - SIP_DOMAIN=clarity.example.com
       - LISTEN_ADDR=:8080
       - LOG_LEVEL=debug
-    ports:
-      - "8080:8080"
+      - API_BASE_PATH=/api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/ws`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=8080"
     networks:
       - webrtc
 
@@ -21,8 +38,12 @@ services:
     environment:
       - BACKEND_URL=http://backend:8080
       - LISTEN_ADDR=:3000
-    ports:
-      - "80:3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.priority=1"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
     depends_on:
       - backend
     networks:
