@@ -46,6 +46,23 @@ const WebRTCClient = (() => {
         return offer;
     }
 
+    async function handleOffer(offer, onIceCandidate) {
+        createPeerConnection(onIceCandidate);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        } catch (e) {
+            console.error('[WebRTC] getUserMedia failed', e);
+            pc.close();
+            pc = null;
+            throw e;
+        }
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        return answer;
+    }
+
     async function handleAnswer(answer) {
         if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
@@ -63,5 +80,5 @@ const WebRTCClient = (() => {
         }
     }
 
-    return { startCall, handleAnswer, addIceCandidate, hangup };
+    return { startCall, handleOffer, handleAnswer, addIceCandidate, hangup };
 })();

@@ -1,6 +1,7 @@
 // app.js - Main application logic
 (function() {
     let currentCall = null;
+    let pendingOffer = null;
     let statusPollInterval = null;
 
     function pollStatus() {
@@ -41,6 +42,7 @@
                 break;
             case 'incoming':
                 currentCall = msg.payload && msg.payload.from;
+                pendingOffer = msg.payload && msg.payload.offer;
                 UI.showIncomingCall(currentCall || 'Unknown');
                 break;
             case 'hangup':
@@ -87,14 +89,13 @@
     // Accept button
     document.getElementById('accept-btn').addEventListener('click', async () => {
         UI.hideIncomingCall();
-        // TODO: when backend sends SDP offer on incoming call, use handleAnswer/setRemoteDescription
-        // and send back an answer. For now this is a stub that initiates media and notifies the backend.
         try {
-            const offer = await WebRTCClient.startCall((candidate) => {
+            const answer = await WebRTCClient.handleOffer(pendingOffer, (candidate) => {
                 Signaling.send({ type: 'ice', payload: candidate });
             });
-            Signaling.send({ type: 'answer', payload: offer });
+            Signaling.send({ type: 'answer', payload: answer });
             UI.showActiveCall(currentCall || 'Incoming');
+            pendingOffer = null;
         } catch (e) {
             console.error('[App] accept call failed', e);
             UI.addCallLogEntry('Failed to accept call: ' + e.message);
@@ -107,6 +108,7 @@
         Signaling.send({ type: 'hangup', payload: {} });
         UI.addCallLogEntry('Rejected call from ' + (currentCall || 'Unknown'));
         currentCall = null;
+        pendingOffer = null;
     });
 
     // Start signaling
