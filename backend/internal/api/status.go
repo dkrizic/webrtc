@@ -8,20 +8,34 @@ import (
 	"github.com/dkrizic/webrtc/backend/internal/config"
 )
 
+// SIPStatusProvider provides the current SIP registration status
+type SIPStatusProvider interface {
+	IsRegistered() bool
+}
+
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
 		slog.ErrorContext(r.Context(), "health encode error", "error", err)
 	}
-	slog.InfoContext(r.Context(), "health check")
+	slog.DebugContext(r.Context(), "health check")
 }
 
-func StatusHandler(cfg *config.Config) http.HandlerFunc {
+func StatusHandler(cfg *config.Config, sipProvider SIPStatusProvider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]string{"sip": "unregistered", "phone_number": cfg.SIPUsername}); err != nil {
+
+		sipStatus := "unregistered"
+		if sipProvider != nil && sipProvider.IsRegistered() {
+			sipStatus = "registered"
+		}
+
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"sip":          sipStatus,
+			"phone_number": cfg.SIPUsername,
+		}); err != nil {
 			slog.ErrorContext(r.Context(), "status encode error", "error", err)
 		}
-		slog.InfoContext(r.Context(), "status check")
+		slog.DebugContext(r.Context(), "status check", "sip_status", sipStatus)
 	}
 }

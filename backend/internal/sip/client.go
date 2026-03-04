@@ -20,10 +20,11 @@ type Client struct {
 	cfg      *config.Config
 	incoming chan bridge.IncomingCall
 
-	mu          sync.Mutex
+	mu            sync.Mutex
+	registered    bool
 	currentInvite *sipmsg.Request
-	currentTx   sipmsg.ServerTransaction
-	sipClient   *sipgo.Client
+	currentTx     sipmsg.ServerTransaction
+	sipClient     *sipgo.Client
 }
 
 func New(cfg *config.Config) *Client {
@@ -38,52 +39,73 @@ func (c *Client) Incoming() <-chan bridge.IncomingCall {
 	return c.incoming
 }
 
+// IsRegistered returns whether the SIP client is currently registered.
+func (c *Client) IsRegistered() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.registered
+}
+
 // Register performs SIP REGISTER with the configured server (with digest auth retry).
 func (c *Client) Register(ctx context.Context) error {
-	slog.InfoContext(ctx, "SIP registering", "server", c.cfg.SIPServer, "user", c.cfg.SIPUsername)
+	slog.InfoContext(ctx, "SIP: starting registration", "server", c.cfg.SIPServer, "username", c.cfg.SIPUsername, "domain", c.cfg.SIPDomain)
 
 	ua, err := sipgo.NewUA(sipgo.WithUserAgent(c.cfg.SIPUsername))
 	if err != nil {
+		slog.ErrorContext(ctx, "SIP: failed to create user agent", "error", err)
 		return fmt.Errorf("SIP UA creation failed: %w", err)
 	}
+	slog.DebugContext(ctx, "SIP: user agent created")
 
 	client, err := sipgo.NewClient(ua)
 	if err != nil {
+		slog.ErrorContext(ctx, "SIP: failed to create client", "error", err)
 		return fmt.Errorf("SIP client creation failed: %w", err)
 	}
 	c.sipClient = client
+	slog.DebugContext(ctx, "SIP: client created")
 
 	// Build REGISTER request
 	recipientURI := sipmsg.Uri{}
 	sipmsg.ParseUri(fmt.Sprintf("sip:%s@%s", c.cfg.SIPUsername, c.cfg.SIPServer), &recipientURI)
 	req := sipmsg.NewRequest(sipmsg.REGISTER, recipientURI)
+	slog.DebugContext(ctx, "SIP: REGISTER request built", "uri", recipientURI.String())
 
 	localIP := c.localIP()
 	req.AppendHeader(sipmsg.NewHeader("Contact",
 		fmt.Sprintf("<sip:%s@%s>", c.cfg.SIPUsername, localIP)))
 	req.SetTransport("UDP")
+	slog.DebugContext(ctx, "SIP: contact header set", "local_ip", localIP)
 
 	tx, err := client.TransactionRequest(ctx, req, sipgo.ClientRequestRegisterBuild)
 	if err != nil {
+		slog.ErrorContext(ctx, "SIP: REGISTER transaction failed", "error", err)
 		return fmt.Errorf("SIP REGISTER transaction failed: %w", err)
 	}
 	defer tx.Terminate()
 
 	res, err := waitResponse(ctx, tx)
 	if err != nil {
+		slog.ErrorContext(ctx, "SIP: no response to initial REGISTER", "error", err)
 		return fmt.Errorf("SIP REGISTER response error: %w", err)
 	}
+	slog.DebugContext(ctx, "SIP: initial REGISTER response", "status_code", res.StatusCode)
 
 	if res.StatusCode == 401 {
+		slog.InfoContext(ctx, "SIP: received 401 Unauthorized, attempting digest authentication")
 		// Digest authentication
 		wwwAuth := res.GetHeader("WWW-Authenticate")
 		if wwwAuth == nil {
+			slog.ErrorContext(ctx, "SIP: 401 response but no WWW-Authenticate header")
 			return fmt.Errorf("SIP 401 but no WWW-Authenticate header")
 		}
 		chal, err := digest.ParseChallenge(wwwAuth.Value())
 		if err != nil {
+			slog.ErrorContext(ctx, "SIP: failed to parse WWW-Authenticate", "error", err)
 			return fmt.Errorf("failed to parse WWW-Authenticate: %w", err)
 		}
+		slog.DebugContext(ctx, "SIP: digest challenge parsed", "realm", chal.Realm)
+
 		cred, err := digest.Digest(chal, digest.Options{
 			Method:   "REGISTER",
 			URI:      recipientURI.Host,
@@ -91,46 +113,63 @@ func (c *Client) Register(ctx context.Context) error {
 			Password: c.cfg.SIPPassword,
 		})
 		if err != nil {
+			slog.ErrorContext(ctx, "SIP: digest authentication failed", "error", err)
 			return fmt.Errorf("digest auth failed: %w", err)
 		}
+		slog.DebugContext(ctx, "SIP: digest credentials computed")
 
 		authReq := req.Clone()
 		authReq.RemoveHeader("Via")
 		authReq.AppendHeader(sipmsg.NewHeader("Authorization", cred.String()))
+		slog.DebugContext(ctx, "SIP: sending authenticated REGISTER request")
 
 		tx2, err := client.TransactionRequest(ctx, authReq,
 			sipgo.ClientRequestIncreaseCSEQ, sipgo.ClientRequestAddVia)
 		if err != nil {
+			slog.ErrorContext(ctx, "SIP: authenticated REGISTER transaction failed", "error", err)
 			return fmt.Errorf("SIP REGISTER auth transaction failed: %w", err)
 		}
 		defer tx2.Terminate()
 
 		res, err = waitResponse(ctx, tx2)
 		if err != nil {
+			slog.ErrorContext(ctx, "SIP: no response to authenticated REGISTER", "error", err)
 			return fmt.Errorf("SIP REGISTER auth response error: %w", err)
 		}
+		slog.DebugContext(ctx, "SIP: authenticated REGISTER response", "status_code", res.StatusCode)
 	}
 
 	if res.StatusCode != 200 {
-		return fmt.Errorf("SIP REGISTER failed with status %d", res.StatusCode)
+		slog.ErrorContext(ctx, "SIP: REGISTER failed with error response", "status_code", res.StatusCode, "reason", res.Reason)
+		return fmt.Errorf("SIP REGISTER failed with status %d: %s", res.StatusCode, res.Reason)
 	}
 
-	slog.InfoContext(ctx, "SIP registered successfully")
+	c.mu.Lock()
+	c.registered = true
+	c.mu.Unlock()
+
+	slog.InfoContext(ctx, "SIP: ✅ registration successful", "username", c.cfg.SIPUsername)
 	return nil
 }
 
 // ListenIncoming starts a SIP server that receives INVITE requests.
 // It blocks until ctx is cancelled.
 func (c *Client) ListenIncoming(ctx context.Context) error {
+	slog.InfoContext(ctx, "SIP: initializing incoming call listener")
+
 	ua, err := sipgo.NewUA(sipgo.WithUserAgent(c.cfg.SIPUsername))
 	if err != nil {
+		slog.ErrorContext(ctx, "SIP: failed to create UA for listener", "error", err)
 		return fmt.Errorf("SIP UA creation failed: %w", err)
 	}
+	slog.DebugContext(ctx, "SIP: listener UA created")
 
 	srv, err := sipgo.NewServer(ua)
 	if err != nil {
+		slog.ErrorContext(ctx, "SIP: failed to create server", "error", err)
 		return fmt.Errorf("SIP server creation failed: %w", err)
 	}
+	slog.DebugContext(ctx, "SIP: server created")
 
 	srv.OnInvite(func(req *sipmsg.Request, tx sipmsg.ServerTransaction) {
 		c.handleInvite(ctx, req, tx)
@@ -140,17 +179,19 @@ func (c *Client) ListenIncoming(ctx context.Context) error {
 	})
 
 	listenAddr := fmt.Sprintf("0.0.0.0:5060")
-	slog.InfoContext(ctx, "SIP listening for incoming calls", "addr", listenAddr)
+	slog.InfoContext(ctx, "SIP: 📞 listener starting", "addr", listenAddr)
 
 	errCh := make(chan error, 1)
 	go func() {
 		if err := srv.ListenAndServe(ctx, "udp", listenAddr); err != nil {
+			slog.ErrorContext(ctx, "SIP: listener error", "error", err)
 			errCh <- err
 		}
 	}()
 
 	select {
 	case <-ctx.Done():
+		slog.InfoContext(ctx, "SIP: listener shutting down")
 		return nil
 	case err := <-errCh:
 		return err
@@ -159,15 +200,16 @@ func (c *Client) ListenIncoming(ctx context.Context) error {
 
 func (c *Client) handleInvite(ctx context.Context, req *sipmsg.Request, tx sipmsg.ServerTransaction) {
 	from := req.From().Address.User
-	slog.InfoContext(ctx, "SIP INVITE received", "from", from)
+	slog.InfoContext(ctx, "SIP: 🔔 incoming INVITE received", "from", from)
 
 	// Extract SDP body as JSON-compatible raw bytes
 	body := req.Body()
 	sdpJSON, err := json.Marshal(string(body))
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to marshal SDP body", "error", err)
+		slog.ErrorContext(ctx, "SIP: failed to marshal SDP body", "error", err)
 		sdpJSON = []byte(`""`)
 	}
+	slog.DebugContext(ctx, "SIP: SDP offer extracted", "from", from)
 
 	c.mu.Lock()
 	c.currentInvite = req
@@ -177,22 +219,29 @@ func (c *Client) handleInvite(ctx context.Context, req *sipmsg.Request, tx sipms
 	// Send 180 Ringing
 	ringing := sipmsg.NewResponseFromRequest(req, 180, "Ringing", nil)
 	if err := tx.Respond(ringing); err != nil {
-		slog.ErrorContext(ctx, "failed to send 180 Ringing", "error", err)
+		slog.ErrorContext(ctx, "SIP: failed to send 180 Ringing", "error", err)
+	} else {
+		slog.DebugContext(ctx, "SIP: sent 180 Ringing", "from", from)
 	}
 
 	select {
 	case c.incoming <- bridge.IncomingCall{From: from, Offer: sdpJSON}:
+		slog.DebugContext(ctx, "SIP: incoming call forwarded to bridge", "from", from)
 	default:
-		slog.WarnContext(ctx, "incoming call channel full, dropping call")
+		slog.WarnContext(ctx, "SIP: incoming call channel full, rejecting call", "from", from)
 		busy := sipmsg.NewResponseFromRequest(req, 486, "Busy Here", nil)
 		_ = tx.Respond(busy)
 	}
 }
 
 func (c *Client) handleBye(ctx context.Context, req *sipmsg.Request, tx sipmsg.ServerTransaction) {
-	slog.InfoContext(ctx, "SIP BYE received")
+	slog.InfoContext(ctx, "SIP: 📞 BYE received (call ended)")
 	ok := sipmsg.NewResponseFromRequest(req, 200, "OK", nil)
-	_ = tx.Respond(ok)
+	if err := tx.Respond(ok); err != nil {
+		slog.ErrorContext(ctx, "SIP: failed to send 200 OK to BYE", "error", err)
+	} else {
+		slog.DebugContext(ctx, "SIP: sent 200 OK to BYE")
+	}
 }
 
 // AcceptCall sends a SIP 200 OK with the given SDP answer (implements bridge.SIPClient).
@@ -203,6 +252,7 @@ func (c *Client) AcceptCall(ctx context.Context, answer json.RawMessage) error {
 	c.mu.Unlock()
 
 	if req == nil || tx == nil {
+		slog.WarnContext(ctx, "SIP: attempted to accept call but no active INVITE")
 		return fmt.Errorf("no active INVITE to accept")
 	}
 
@@ -210,16 +260,17 @@ func (c *Client) AcceptCall(ctx context.Context, answer json.RawMessage) error {
 	var sdpStr string
 	if err := json.Unmarshal(answer, &sdpStr); err != nil {
 		// If it's not a plain JSON string, use the raw bytes as body directly
-		slog.WarnContext(ctx, "SDP answer is not a JSON string, using raw bytes", "error", err)
+		slog.DebugContext(ctx, "SIP: SDP answer is not a JSON string, using raw bytes", "error", err)
 		sdpStr = string(answer)
 	}
 
 	resp := sipmsg.NewResponseFromRequest(req, 200, "OK", []byte(sdpStr))
 	resp.AppendHeader(sipmsg.NewHeader("Content-Type", "application/sdp"))
 	if err := tx.Respond(resp); err != nil {
+		slog.ErrorContext(ctx, "SIP: failed to send 200 OK response", "error", err)
 		return fmt.Errorf("failed to send 200 OK: %w", err)
 	}
-	slog.InfoContext(ctx, "SIP call accepted")
+	slog.InfoContext(ctx, "SIP: ✅ call accepted, 200 OK sent")
 	return nil
 }
 
@@ -231,17 +282,19 @@ func (c *Client) RejectCall(ctx context.Context) error {
 	c.mu.Unlock()
 
 	if req == nil || tx == nil {
+		slog.WarnContext(ctx, "SIP: attempted to reject call but no active INVITE")
 		return fmt.Errorf("no active INVITE to reject")
 	}
 	resp := sipmsg.NewResponseFromRequest(req, 486, "Busy Here", nil)
 	if err := tx.Respond(resp); err != nil {
+		slog.ErrorContext(ctx, "SIP: failed to send 486 response", "error", err)
 		return fmt.Errorf("failed to send 486: %w", err)
 	}
 	c.mu.Lock()
 	c.currentInvite = nil
 	c.currentTx = nil
 	c.mu.Unlock()
-	slog.InfoContext(ctx, "SIP call rejected")
+	slog.InfoContext(ctx, "SIP: ❌ call rejected, 486 Busy sent")
 	return nil
 }
 
@@ -251,7 +304,7 @@ func (c *Client) HangupCall(ctx context.Context) error {
 	c.currentInvite = nil
 	c.currentTx = nil
 	c.mu.Unlock()
-	slog.InfoContext(ctx, "SIP hangup (BYE not sent – no dialog tracking)")
+	slog.InfoContext(ctx, "SIP: 📞 call ended (hangup)")
 	return nil
 }
 

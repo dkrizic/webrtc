@@ -16,14 +16,15 @@ services:
   backend:
     build:
       context: ./backend
+    env_file: .env
     environment:
-      - SIP_SERVER=sip.clarity.example.com
-      - SIP_USERNAME=agent1
-      - SIP_PASSWORD=secret
-      - SIP_DOMAIN=clarity.example.com
-      - LISTEN_ADDR=:8080
-      - LOG_LEVEL=debug
-      - API_BASE_PATH=/api
+      - SIP_SERVER=${SIP_SERVER}
+      - SIP_USERNAME=${SIP_USERNAME}
+      - SIP_PASSWORD=${SIP_PASSWORD}
+      - SIP_DOMAIN=${SIP_DOMAIN}
+      - LISTEN_ADDR=${LISTEN_ADDR}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - API_BASE_PATH=${API_BASE_PATH}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/ws`)"

@@ -41,9 +41,12 @@ func New(hub *signaling.Hub, sipClient SIPClient) *Bridge {
 // Start initializes the bridge and begins forwarding SIP events to WebSocket clients.
 func (b *Bridge) Start(ctx context.Context) error {
 	b.ctx = ctx
-	slog.InfoContext(ctx, "bridge started")
+	slog.InfoContext(ctx, "Bridge: initialized and starting")
 	if b.sip != nil {
+		slog.DebugContext(ctx, "Bridge: SIP client available, starting incoming call forwarder")
 		go b.forwardIncoming(ctx)
+	} else {
+		slog.WarnContext(ctx, "Bridge: no SIP client configured")
 	}
 	return nil
 }
@@ -51,15 +54,18 @@ func (b *Bridge) Start(ctx context.Context) error {
 // forwardIncoming listens for incoming SIP calls and notifies WebSocket clients.
 func (b *Bridge) forwardIncoming(ctx context.Context) {
 	ch := b.sip.Incoming()
+	slog.DebugContext(ctx, "Bridge: waiting for incoming SIP calls...")
 	for {
 		select {
 		case <-ctx.Done():
+			slog.InfoContext(ctx, "Bridge: incoming call forwarder shutting down")
 			return
 		case call, ok := <-ch:
 			if !ok {
+				slog.WarnContext(ctx, "Bridge: incoming call channel closed")
 				return
 			}
-			slog.InfoContext(ctx, "incoming SIP call", "from", call.From)
+			slog.InfoContext(ctx, "Bridge: 🔔 forwarding incoming call to WebSocket clients", "from", call.From)
 			b.hub.Broadcast(signaling.Message{
 				Type: signaling.TypeIncoming,
 				Payload: map[string]interface{}{
@@ -67,6 +73,7 @@ func (b *Bridge) forwardIncoming(ctx context.Context) {
 					"offer": call.Offer,
 				},
 			})
+			slog.DebugContext(ctx, "Bridge: incoming call broadcasted", "from", call.From)
 		}
 	}
 }
@@ -77,24 +84,28 @@ func (b *Bridge) Route(msg signaling.Message, send func(signaling.Message) error
 	switch msg.Type {
 	case signaling.TypeAnswer:
 		if b.sip == nil {
+			slog.WarnContext(ctx, "Bridge: received answer but no SIP client configured")
 			return
 		}
+		slog.InfoContext(ctx, "Bridge: ✅ received answer from WebSocket, accepting SIP call")
 		raw, err := json.Marshal(msg.Payload)
 		if err != nil {
-			slog.ErrorContext(ctx, "bridge: failed to marshal answer", "error", err)
+			slog.ErrorContext(ctx, "Bridge: failed to marshal answer", "error", err)
 			return
 		}
 		if err := b.sip.AcceptCall(ctx, raw); err != nil {
-			slog.ErrorContext(ctx, "bridge: AcceptCall failed", "error", err)
+			slog.ErrorContext(ctx, "Bridge: AcceptCall failed", "error", err)
 		}
 	case signaling.TypeHangup:
 		if b.sip == nil {
+			slog.WarnContext(ctx, "Bridge: received hangup but no SIP client configured")
 			return
 		}
+		slog.InfoContext(ctx, "Bridge: ❌ received hangup from WebSocket, ending SIP call")
 		if err := b.sip.HangupCall(ctx); err != nil {
-			slog.ErrorContext(ctx, "bridge: HangupCall failed", "error", err)
+			slog.ErrorContext(ctx, "Bridge: HangupCall failed", "error", err)
 		}
 	default:
-		slog.InfoContext(ctx, "bridge: unhandled message type", "type", msg.Type)
+		slog.DebugContext(ctx, "Bridge: unhandled message type", "type", msg.Type)
 	}
 }

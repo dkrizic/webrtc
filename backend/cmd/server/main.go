@@ -89,7 +89,7 @@ func main() {
 				}
 			}()
 
-			router := api.NewRouterWithHub(cfg, hub)
+			router := api.NewRouterWithHub(cfg, hub, sipClient)
 			slog.Info("server started", "addr", cfg.ListenAddr)
 			return http.ListenAndServe(cfg.ListenAddr, router)
 		},
