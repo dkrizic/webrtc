@@ -1,0 +1,9 @@
+.git
+.github
+*.md
+!README.md
+.idea
+.vscode
+vendor/
+*.test
+*.out

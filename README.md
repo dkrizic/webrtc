@@ -65,3 +65,15 @@ The backend is written in Go and acts as a WebSocket server to handle signaling 
 ## Frontend
 
 The frontend is a simple HTML/JavaScript application that allows users to make and receive calls using WebRTC. It connects to the backend via WebSocket for signaling and uses the REST API for other interactions.
+
+## Quickstart
+
+```bash
+docker-compose up --build
+```
+
+Then open [http://localhost](http://localhost) in your browser.
+
+- Frontend: [http://localhost](http://localhost)
+- Backend API: [http://localhost:8080/api/health](http://localhost:8080/api/health)
+- Backend Status: [http://localhost:8080/api/status](http://localhost:8080/api/status)

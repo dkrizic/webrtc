@@ -1,1 +1,21 @@
 .idea/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+vendor/
+.env
+.env.*
+*.log
+dist/
+bin/
+# Docker build artifacts
+*.tar
+# Go test artifacts
+*.test
+*.out
+# IDE files
+.vscode/
+*.swp
+*.swo
