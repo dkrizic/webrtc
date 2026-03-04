@@ -12,7 +12,7 @@ func NewRouter(cfg *config.Config) *http.ServeMux {
 	base := path.Clean("/" + cfg.APIBasePath)
 	mux := http.NewServeMux()
 	mux.HandleFunc(base+"/health", HealthHandler)
-	mux.HandleFunc(base+"/status", StatusHandler)
+	mux.HandleFunc(base+"/status", StatusHandler(cfg))
 	mux.HandleFunc("/ws", signaling.Handler)
 	return mux
 }
