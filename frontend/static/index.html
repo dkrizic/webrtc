@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC SIP Phone</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>WebRTC SIP Phone</h1>
+
+        <!-- Connection Status -->
+        <div class="status-bar">
+            <span id="sip-status" class="status-indicator disconnected">SIP: Disconnected ❌</span>
+        </div>
+
+        <!-- Incoming Call Alert -->
+        <div id="incoming-call" class="incoming-call hidden">
+            <h3>Incoming call from <span id="caller-id"></span></h3>
+            <button id="accept-btn" class="btn btn-success">Accept</button>
+            <button id="reject-btn" class="btn btn-danger">Reject</button>
+        </div>
+
+        <!-- Dial Pad -->
+        <div id="dial-section" class="dial-section">
+            <h2>Dial</h2>
+            <input type="text" id="phone-number" placeholder="Enter phone number" />
+            <button id="dial-btn" class="btn btn-primary">Dial</button>
+        </div>
+
+        <!-- Active Call Section -->
+        <div id="active-call" class="active-call hidden">
+            <h2>Active Call</h2>
+            <div class="call-info">
+                <span>With: <strong id="call-party"></strong></span>
+                <span>Duration: <span id="call-duration">00:00</span></span>
+            </div>
+            <button id="hangup-btn" class="btn btn-danger">Hangup</button>
+        </div>
+
+        <!-- Call Log -->
+        <div class="call-log">
+            <h2>Call Log</h2>
+            <ul id="call-log-list"></ul>
+        </div>
+    </div>
+
+    <!-- Hidden audio element for remote audio playback -->
+    <audio id="remote-audio" autoplay></audio>
+
+    <script src="/js/signaling.js"></script>
+    <script src="/js/webrtc.js"></script>
+    <script src="/js/ui.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
