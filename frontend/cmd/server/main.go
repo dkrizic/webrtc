@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
+	"time"
 
 	"github.com/urfave/cli/v2"
 )
@@ -40,26 +40,34 @@ func main() {
 
 			slog.Info("starting webrtc-frontend", "listen", listenAddr, "backend", backendURL)
 
-			target, err := url.Parse(backendURL)
-			if err != nil {
-				return err
+			// Check backend connectivity before starting
+			healthURL := backendURL + "/api/health"
+			client := &http.Client{Timeout: 5 * time.Second}
+			var lastErr error
+			for i := 0; i < 5; i++ {
+				resp, err := client.Get(healthURL)
+				if err == nil && resp.StatusCode == 200 {
+					resp.Body.Close()
+					lastErr = nil
+					slog.Info("backend health check passed", "url", healthURL)
+					break
+				}
+				if err != nil {
+					lastErr = err
+				} else {
+					resp.Body.Close()
+					lastErr = fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+				}
+				slog.Warn("backend health check failed, retrying...", "attempt", i+1, "error", lastErr)
+				time.Sleep(2 * time.Second)
 			}
-			proxy := httputil.NewSingleHostReverseProxy(target)
-
-			mux := http.NewServeMux()
-
-			// Reverse proxy for API and WebSocket
-			mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-				slog.InfoContext(r.Context(), "proxying request", "path", r.URL.Path)
-				proxy.ServeHTTP(w, r)
-			})
-			mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-				slog.InfoContext(r.Context(), "proxying websocket", "path", r.URL.Path)
-				proxy.ServeHTTP(w, r)
-			})
+			if lastErr != nil {
+				return fmt.Errorf("backend is not accessible at %s: %w", healthURL, lastErr)
+			}
 
 			// Serve static files
 			fs := http.FileServer(http.Dir("/app/static"))
+			mux := http.NewServeMux()
 			mux.Handle("/", fs)
 
 			slog.Info("server started", "addr", listenAddr)
