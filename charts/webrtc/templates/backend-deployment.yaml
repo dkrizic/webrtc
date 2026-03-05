@@ -46,6 +46,10 @@ spec:
               value: {{ .Values.backend.env.LOG_LEVEL | quote }}
             - name: API_BASE_PATH
               value: {{ .Values.backend.env.API_BASE_PATH | quote }}
+          {{- with .Values.backend.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- with .Values.backend.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

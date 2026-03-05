@@ -32,6 +32,10 @@ spec:
               value: {{ .Values.frontend.env.LISTEN_ADDR | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.frontend.env.LOG_LEVEL | quote }}
+          {{- with .Values.frontend.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- with .Values.frontend.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

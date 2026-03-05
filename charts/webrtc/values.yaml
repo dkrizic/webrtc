@@ -15,6 +15,7 @@ backend:
     LISTEN_ADDR: ":8080"
     LOG_LEVEL: "info"
     API_BASE_PATH: "/api"
+  envFrom: []
   resources: {}
 
 frontend:
@@ -29,6 +30,7 @@ frontend:
   env:
     LISTEN_ADDR: ":3000"
     LOG_LEVEL: "info"
+  envFrom: []
   resources: {}
 
 ingress:
