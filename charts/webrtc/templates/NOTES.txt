@@ -16,6 +16,8 @@ To access the frontend, run:
   kubectl port-forward svc/{{ include "webrtc.frontend.fullname" . }} 3000:{{ .Values.frontend.service.port }}
 
 Then open http://localhost:3000 in your browser.
+Note: With ingress disabled the frontend cannot reach the backend /api/version
+endpoint. Enable ingress (--set ingress.enabled=true) for full functionality.
 {{- end }}
 
 To configure SIP credentials, set the following values:
@@ -23,3 +25,39 @@ To configure SIP credentials, set the following values:
   --set backend.env.SIP_USERNAME=<username>
   --set backend.env.SIP_PASSWORD=<password>
   --set backend.env.SIP_DOMAIN=<domain>
+
+SIP UDP port {{ .Values.backend.sip.port }} is exposed on the backend service.
+{{- if .Values.udpRoute.enabled }}
+
+A Traefik IngressRouteUDP has been created for SIP on entryPoint "{{ .Values.udpRoute.entryPoint }}".
+Traefik must be configured with a UDP entrypoint named "{{ .Values.udpRoute.entryPoint }}" on port {{ .Values.backend.sip.port }}.
+
+When deploying Traefik via Helm, add the following to your Traefik values:
+
+  ports:
+    {{ .Values.udpRoute.entryPoint }}:
+      port: {{ .Values.backend.sip.port }}
+      protocol: UDP
+
+Or with --set flags:
+  --set ports.{{ .Values.udpRoute.entryPoint }}.port={{ .Values.backend.sip.port }}
+  --set ports.{{ .Values.udpRoute.entryPoint }}.protocol=UDP
+
+For a standalone Traefik installation, add to traefik.yml / traefik.toml:
+
+  # traefik.yml (YAML static config)
+  entryPoints:
+    {{ .Values.udpRoute.entryPoint }}:
+      address: ":{{ .Values.backend.sip.port }}/udp"
+
+  # traefik.toml (TOML static config)
+  [entryPoints.{{ .Values.udpRoute.entryPoint }}]
+    address = ":{{ .Values.backend.sip.port }}/udp"
+{{- else }}
+
+To enable the Traefik UDPRoute for SIP (port {{ .Values.backend.sip.port }}), install with:
+  --set udpRoute.enabled=true
+
+Before enabling, configure Traefik with a UDP entrypoint named "sip" on port {{ .Values.backend.sip.port }}.
+See Traefik docs: https://doc.traefik.io/traefik/routing/entrypoints/#udp
+{{- end }}

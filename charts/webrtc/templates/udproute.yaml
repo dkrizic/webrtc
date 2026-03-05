@@ -1,0 +1,16 @@
+{{- if .Values.udpRoute.enabled -}}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteUDP
+metadata:
+  name: {{ include "webrtc.backend.fullname" . }}-sip
+  labels:
+    {{- include "webrtc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  entryPoints:
+    - {{ .Values.udpRoute.entryPoint }}
+  routes:
+    - services:
+        - name: {{ include "webrtc.backend.fullname" . }}
+          port: {{ .Values.backend.sip.port }}
+{{- end }}
