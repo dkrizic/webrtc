@@ -25,27 +25,10 @@ spec:
             - name: http
               containerPort: {{ .Values.backend.service.port }}
               protocol: TCP
+          {{- with .Values.backend.env }}
           env:
-            - name: SIP_SERVER
-              value: {{ .Values.backend.env.SIP_SERVER | quote }}
-            - name: SIP_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "webrtc.backend.fullname" . }}-sip
-                  key: SIP_USERNAME
-            - name: SIP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "webrtc.backend.fullname" . }}-sip
-                  key: SIP_PASSWORD
-            - name: SIP_DOMAIN
-              value: {{ .Values.backend.env.SIP_DOMAIN | quote }}
-            - name: LISTEN_ADDR
-              value: {{ .Values.backend.env.LISTEN_ADDR | quote }}
-            - name: LOG_LEVEL
-              value: {{ .Values.backend.env.LOG_LEVEL | quote }}
-            - name: API_BASE_PATH
-              value: {{ .Values.backend.env.API_BASE_PATH | quote }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- with .Values.backend.envFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
