@@ -8,13 +8,18 @@ backend:
     type: ClusterIP
     port: 8080
   env:
-    SIP_SERVER: ""
-    SIP_USERNAME: ""
-    SIP_PASSWORD: ""
-    SIP_DOMAIN: ""
-    LISTEN_ADDR: ":8080"
-    LOG_LEVEL: "info"
-    API_BASE_PATH: "/api"
+    - name: SIP_SERVER
+      value: ""
+    - name: SIP_USERNAME
+      value: ""
+    - name: SIP_DOMAIN
+      value: ""
+    - name: LISTEN_ADDR
+      value: ":8080"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: API_BASE_PATH
+      value: "/api"
   envFrom: []
   resources: {}
 
