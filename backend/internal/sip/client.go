@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/dkrizic/webrtc/backend/internal/bridge"
@@ -291,6 +292,16 @@ func (c *Client) MakeCall(ctx context.Context, to string, offer json.RawMessage)
 		sdpStr = string(offer)
 	}
 
+	// Optionally reduce ICE candidates to limit SDP body size (avoids UDP MTU issues).
+	if c.cfg.SIPMaxICECandidates > 0 {
+		filtered := filterSDPCandidates(sdpStr, c.cfg.SIPMaxICECandidates)
+		if filtered != sdpStr {
+			slog.DebugContext(ctx, "SIP: SDP ICE candidates filtered", "max", c.cfg.SIPMaxICECandidates,
+				"original_size", len(sdpStr), "filtered_size", len(filtered))
+		}
+		sdpStr = filtered
+	}
+
 	// Build the INVITE request.
 	recipientURI := sipmsg.Uri{}
 	sipmsg.ParseUri(fmt.Sprintf("sip:%s@%s", to, c.cfg.SIPServer), &recipientURI)
@@ -413,4 +424,48 @@ func (c *Client) transport() string {
 		slog.Warn("SIP: unrecognised transport configured, falling back to UDP", "configured", c.cfg.SIPTransport)
 		return "UDP"
 	}
+}
+
+// filterSDPCandidates limits the number of ICE candidate lines per media
+// section in an SDP string to at most maxCandidates. The browser orders
+// candidates by priority (highest first), so keeping the first N preserves
+// the best ones. This is the primary strategy for keeping SIP/UDP packets
+// below the MTU limit.
+//
+// If maxCandidates is 0 the SDP is returned unchanged.
+// Both \r\n and \n line endings are handled; the original style is preserved.
+func filterSDPCandidates(sdp string, maxCandidates int) string {
+	if maxCandidates <= 0 {
+		return sdp
+	}
+
+	// Detect line ending style.
+	sep := "\n"
+	if strings.Contains(sdp, "\r\n") {
+		sep = "\r\n"
+	}
+
+	lines := strings.Split(sdp, sep)
+	result := make([]string, 0, len(lines))
+	count := 0 // candidates seen in the current media section
+
+	for _, line := range lines {
+		// A new media section resets the per-section candidate counter.
+		if strings.HasPrefix(line, "m=") {
+			count = 0
+			result = append(result, line)
+			continue
+		}
+		if strings.HasPrefix(line, "a=candidate:") {
+			if count < maxCandidates {
+				result = append(result, line)
+				count++
+			}
+			// Excess candidates are silently dropped.
+			continue
+		}
+		result = append(result, line)
+	}
+
+	return strings.Join(result, sep)
 }
