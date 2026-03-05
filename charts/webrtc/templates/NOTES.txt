@@ -29,35 +29,49 @@ To configure SIP credentials, set the following values:
 SIP UDP port {{ .Values.backend.sip.port }} is exposed on the backend service.
 {{- if .Values.udpRoute.enabled }}
 
-A Traefik IngressRouteUDP has been created for SIP on entryPoint "{{ .Values.udpRoute.entryPoint }}".
-Traefik must be configured with a UDP entrypoint named "{{ .Values.udpRoute.entryPoint }}" on port {{ .Values.backend.sip.port }}.
+A Gateway API UDPRoute has been created for SIP (port {{ .Values.backend.sip.port }}).
+It references Gateway "{{ .Values.udpRoute.gatewayName }}"{{ with .Values.udpRoute.gatewayNamespace }} in namespace "{{ . }}"{{ end }}{{ with .Values.udpRoute.sectionName }}, listener "{{ . }}"{{ end }}.
 
-When deploying Traefik via Helm, add the following to your Traefik values:
+The Gateway must have a UDP listener on port {{ .Values.backend.sip.port }}.
+Example Gateway resource:
 
-  ports:
-    {{ .Values.udpRoute.entryPoint }}:
-      port: {{ .Values.backend.sip.port }}
-      protocol: UDP
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: Gateway
+  metadata:
+    name: {{ .Values.udpRoute.gatewayName }}
+    {{- with .Values.udpRoute.gatewayNamespace }}
+    namespace: {{ . }}
+    {{- end }}
+  spec:
+    gatewayClassName: traefik
+    listeners:
+      - name: {{ default "sip" .Values.udpRoute.sectionName }}
+        port: {{ .Values.backend.sip.port }}
+        protocol: UDP
+  # Note: Gateway is v1 (stable); UDPRoute remains v1alpha2 (experimental).
+  # Both require the experimental Gateway API CRDs (see prerequisite below).
 
-Or with --set flags:
-  --set ports.{{ .Values.udpRoute.entryPoint }}.port={{ .Values.backend.sip.port }}
-  --set ports.{{ .Values.udpRoute.entryPoint }}.protocol=UDP
+To configure Traefik as a Gateway API provider, add to traefik.yml:
 
-For a standalone Traefik installation, add to traefik.yml / traefik.toml:
+  providers:
+    kubernetesGateway:
+      enabled: true
 
-  # traefik.yml (YAML static config)
-  entryPoints:
-    {{ .Values.udpRoute.entryPoint }}:
-      address: ":{{ .Values.backend.sip.port }}/udp"
+Or with Traefik Helm --set flags:
+  --set providers.kubernetesGateway.enabled=true
 
-  # traefik.toml (TOML static config)
-  [entryPoints.{{ .Values.udpRoute.entryPoint }}]
-    address = ":{{ .Values.backend.sip.port }}/udp"
+See: https://doc.traefik.io/traefik/providers/kubernetes-gateway/
 {{- else }}
 
-To enable the Traefik UDPRoute for SIP (port {{ .Values.backend.sip.port }}), install with:
+To enable the Gateway API UDPRoute for SIP (port {{ .Values.backend.sip.port }}), install with:
   --set udpRoute.enabled=true
 
-Before enabling, configure Traefik with a UDP entrypoint named "sip" on port {{ .Values.backend.sip.port }}.
-See Traefik docs: https://doc.traefik.io/traefik/routing/entrypoints/#udp
+Prerequisites:
+  1. Install the Kubernetes Gateway API CRDs (v1alpha2 or later):
+       kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/experimental-install.yaml
+  2. Enable the Gateway API provider in Traefik:
+       --set providers.kubernetesGateway.enabled=true
+  3. Create a Gateway with a UDP listener on port {{ .Values.backend.sip.port }}.
+
+See: https://doc.traefik.io/traefik/providers/kubernetes-gateway/
 {{- end }}

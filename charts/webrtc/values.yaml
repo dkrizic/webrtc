@@ -55,4 +55,6 @@ ingress:
 
 udpRoute:
   enabled: false
-  entryPoint: sip
+  gatewayName: traefik
+  gatewayNamespace: traefik
+  sectionName: sip
