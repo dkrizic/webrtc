@@ -274,7 +274,60 @@ func (c *Client) AcceptCall(ctx context.Context, answer json.RawMessage) error {
 	return nil
 }
 
-// RejectCall sends a SIP 486 Busy Here (implements bridge.SIPClient).
+// MakeCall initiates an outgoing SIP INVITE to 'to' with the given SDP offer (implements bridge.SIPClient).
+func (c *Client) MakeCall(ctx context.Context, to string, offer json.RawMessage) error {
+	slog.InfoContext(ctx, "SIP: initiating outgoing call", "to", to)
+
+	if c.sipClient == nil {
+		slog.WarnContext(ctx, "SIP: attempted to make call but SIP client not initialized")
+		return fmt.Errorf("SIP client not initialized; call Register first")
+	}
+
+	// Extract the SDP string from the JSON-encoded offer.
+	var sdpStr string
+	if err := json.Unmarshal(offer, &sdpStr); err != nil {
+		// Not a plain JSON string — use the raw bytes directly.
+		slog.DebugContext(ctx, "SIP: SDP offer is not a JSON string, using raw bytes", "error", err)
+		sdpStr = string(offer)
+	}
+
+	// Build the INVITE request.
+	recipientURI := sipmsg.Uri{}
+	sipmsg.ParseUri(fmt.Sprintf("sip:%s@%s", to, c.cfg.SIPServer), &recipientURI)
+	req := sipmsg.NewRequest(sipmsg.INVITE, recipientURI)
+	req.AppendHeader(sipmsg.NewHeader("Content-Type", "application/sdp"))
+	req.SetBody([]byte(sdpStr))
+
+	localIP := c.localIP()
+	req.AppendHeader(sipmsg.NewHeader("Contact",
+		fmt.Sprintf("<sip:%s@%s>", c.cfg.SIPUsername, localIP)))
+	req.SetTransport("UDP")
+	slog.DebugContext(ctx, "SIP: INVITE request built", "to", recipientURI.String())
+
+	tx, err := c.sipClient.TransactionRequest(ctx, req, sipgo.ClientRequestAddVia)
+	if err != nil {
+		slog.ErrorContext(ctx, "SIP: INVITE transaction failed", "error", err)
+		return fmt.Errorf("SIP INVITE transaction failed: %w", err)
+	}
+	defer tx.Terminate()
+
+	res, err := waitResponse(ctx, tx)
+	if err != nil {
+		slog.ErrorContext(ctx, "SIP: no response to INVITE", "error", err)
+		return fmt.Errorf("SIP INVITE response error: %w", err)
+	}
+	slog.InfoContext(ctx, "SIP: outgoing call response received", "status_code", res.StatusCode)
+
+	if res.StatusCode != 200 {
+		slog.WarnContext(ctx, "SIP: INVITE not accepted", "status_code", res.StatusCode, "reason", res.Reason)
+		return fmt.Errorf("SIP INVITE failed with status %d: %s", res.StatusCode, res.Reason)
+	}
+
+	slog.InfoContext(ctx, "SIP: ✅ outgoing call accepted", "to", to)
+	return nil
+}
+
+
 func (c *Client) RejectCall(ctx context.Context) error {
 	c.mu.Lock()
 	req := c.currentInvite

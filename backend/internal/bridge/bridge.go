@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sync"
 
 	"github.com/dkrizic/webrtc/backend/internal/signaling"
 )
@@ -22,15 +23,19 @@ type SIPClient interface {
 	RejectCall(ctx context.Context) error
 	// HangupCall sends a SIP BYE.
 	HangupCall(ctx context.Context) error
+	// MakeCall initiates an outgoing SIP INVITE to 'to' with the given SDP offer.
+	MakeCall(ctx context.Context, to string, offer json.RawMessage) error
 	// Incoming returns a channel on which incoming SIP calls are delivered.
 	Incoming() <-chan IncomingCall
 }
 
 // Bridge orchestrates between SIP incoming calls and WebSocket-connected clients.
 type Bridge struct {
-	hub *signaling.Hub
-	sip SIPClient
-	ctx context.Context
+	hub       *signaling.Hub
+	sip       SIPClient
+	ctx       context.Context
+	mu        sync.Mutex
+	pendingTo string
 }
 
 // New creates a Bridge. hub must not be nil. sipClient may be nil (no SIP support).
@@ -82,6 +87,41 @@ func (b *Bridge) forwardIncoming(ctx context.Context) {
 func (b *Bridge) Route(msg signaling.Message, send func(signaling.Message) error) {
 	ctx := b.ctx
 	switch msg.Type {
+	case signaling.TypeDial:
+		if b.sip == nil {
+			slog.WarnContext(ctx, "Bridge: received dial but no SIP client configured")
+			return
+		}
+		to := extractTo(msg)
+		if to == "" {
+			slog.WarnContext(ctx, "Bridge: received dial but 'to' field is empty")
+			return
+		}
+		b.mu.Lock()
+		b.pendingTo = to
+		b.mu.Unlock()
+		slog.InfoContext(ctx, "Bridge: 📞 received dial, stored 'to' number", "to", to)
+	case signaling.TypeOffer:
+		if b.sip == nil {
+			slog.WarnContext(ctx, "Bridge: received offer but no SIP client configured")
+			return
+		}
+		b.mu.Lock()
+		to := b.pendingTo
+		b.mu.Unlock()
+		if to == "" {
+			slog.WarnContext(ctx, "Bridge: received offer but no pending 'to' number; ignoring")
+			return
+		}
+		raw, err := json.Marshal(msg.Payload)
+		if err != nil {
+			slog.ErrorContext(ctx, "Bridge: failed to marshal offer", "error", err)
+			return
+		}
+		slog.InfoContext(ctx, "Bridge: 📤 received offer, initiating outgoing SIP call", "to", to)
+		if err := b.sip.MakeCall(ctx, to, raw); err != nil {
+			slog.ErrorContext(ctx, "Bridge: MakeCall failed", "error", err)
+		}
 	case signaling.TypeAnswer:
 		if b.sip == nil {
 			slog.WarnContext(ctx, "Bridge: received answer but no SIP client configured")
@@ -108,4 +148,15 @@ func (b *Bridge) Route(msg signaling.Message, send func(signaling.Message) error
 	default:
 		slog.DebugContext(ctx, "Bridge: unhandled message type", "type", msg.Type)
 	}
+}
+
+// extractTo retrieves the 'to' destination from a dial message.
+// It checks msg.Payload (as a map with a "to" key) and falls back to msg.Data.
+func extractTo(msg signaling.Message) string {
+	if payload, ok := msg.Payload.(map[string]interface{}); ok {
+		if v, ok := payload["to"].(string); ok && v != "" {
+			return v
+		}
+	}
+	return msg.Data
 }
