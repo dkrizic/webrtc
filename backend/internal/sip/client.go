@@ -317,7 +317,7 @@ func (c *Client) MakeCall(ctx context.Context, to string, offer json.RawMessage)
 		"body_size", len(req.Body()),
 	)
 
-	tx, err := c.sipClient.TransactionRequest(ctx, req, sipgo.ClientRequestIncreaseCSEQ, sipgo.ClientRequestAddVia)
+	tx, err := c.sipClient.TransactionRequest(ctx, req, sipgo.ClientRequestBuild)
 	if err != nil {
 		slog.ErrorContext(ctx, "SIP: INVITE transaction failed", "error", err)
 		return fmt.Errorf("SIP INVITE transaction failed: %w", err)
