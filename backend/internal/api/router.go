@@ -17,6 +17,7 @@ func NewRouterWithHub(cfg *config.Config, hub *signaling.Hub, sipProvider SIPSta
 	mux := http.NewServeMux()
 	mux.HandleFunc(base+"/health", HealthHandler)
 	mux.HandleFunc(base+"/status", StatusHandler(cfg, sipProvider))
+	mux.HandleFunc(base+"/version", VersionHandler)
 	mux.HandleFunc("/ws", hub.ServeWS)
 	return mux
 }
