@@ -22,6 +22,7 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
       - name: Set chart appVersion and image tags
         run: |
+          yq e -i ".version = \"${GITHUB_REF_NAME}\"" charts/webrtc/Chart.yaml
           yq e -i ".appVersion = \"${GITHUB_REF_NAME}\"" charts/webrtc/Chart.yaml
           yq e -i ".backend.image.tag = \"${GITHUB_REF_NAME}\"" charts/webrtc/values.yaml
           yq e -i ".frontend.image.tag = \"${GITHUB_REF_NAME}\"" charts/webrtc/values.yaml
