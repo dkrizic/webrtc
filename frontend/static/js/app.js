@@ -4,6 +4,16 @@
     let pendingOffer = null;
     let statusPollInterval = null;
 
+    // Display frontend version from version.js constant
+    UI.setFrontendVersion(FRONTEND_VERSION);
+
+    function fetchBackendVersion() {
+        fetch('/api/version')
+            .then(r => r.json())
+            .then(data => UI.setBackendVersion(data.version || 'unknown'))
+            .catch(() => UI.setBackendVersion('unknown'));
+    }
+
     function pollStatus() {
         fetch('/api/status')
             .then(r => r.json())
@@ -19,6 +29,7 @@
         UI.setSipStatus('unregistered');
         UI.addCallLogEntry('Connected to server');
         pollStatus();
+        fetchBackendVersion();
         statusPollInterval = setInterval(pollStatus, 5000);
     });
 

@@ -12,5 +12,7 @@ FROM alpine:3.19
 WORKDIR /app
 COPY --from=builder /app/server .
 COPY static/ ./static/
+ARG VERSION=dev
+RUN sed -i "s|FRONTEND_VERSION_PLACEHOLDER|$VERSION|g" /app/static/js/version.js
 EXPOSE 3000
 ENTRYPOINT ["/app/server"]

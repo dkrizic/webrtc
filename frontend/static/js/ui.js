@@ -8,6 +8,8 @@ const UI = (() => {
     const callPartySpan = document.getElementById('call-party');
     const callDurationSpan = document.getElementById('call-duration');
     const callLogList = document.getElementById('call-log-list');
+    const frontendVersionSpan = document.getElementById('frontend-version');
+    const backendVersionSpan = document.getElementById('backend-version');
 
     let callTimer = null;
     let callSeconds = 0;
@@ -62,5 +64,13 @@ const UI = (() => {
         callLogList.insertBefore(li, callLogList.firstChild);
     }
 
-    return { setSipStatus, setPhoneNumber, showIncomingCall, hideIncomingCall, showActiveCall, hideActiveCall, addCallLogEntry };
+    function setFrontendVersion(v) {
+        frontendVersionSpan.textContent = v;
+    }
+
+    function setBackendVersion(v) {
+        backendVersionSpan.textContent = v;
+    }
+
+    return { setSipStatus, setPhoneNumber, showIncomingCall, hideIncomingCall, showActiveCall, hideActiveCall, addCallLogEntry, setFrontendVersion, setBackendVersion };
 })();

@@ -16,6 +16,12 @@
             <span id="sip-phone-number"></span>
         </div>
 
+        <!-- Version Info -->
+        <div class="version-bar">
+            <span>Frontend: <span id="frontend-version"></span></span>
+            <span>Backend: <span id="backend-version"></span></span>
+        </div>
+
         <!-- Incoming Call Alert -->
         <div id="incoming-call" class="incoming-call hidden">
             <h3>Incoming call from <span id="caller-id"></span></h3>
@@ -50,6 +56,7 @@
     <!-- Hidden audio element for remote audio playback -->
     <audio id="remote-audio" autoplay></audio>
 
+    <script src="/js/version.js"></script>
     <script src="/js/signaling.js"></script>
     <script src="/js/webrtc.js"></script>
     <script src="/js/ui.js"></script>
