@@ -74,8 +74,8 @@ func (c *Client) Register(ctx context.Context) error {
 	localIP := c.localIP()
 	req.AppendHeader(sipmsg.NewHeader("Contact",
 		fmt.Sprintf("<sip:%s@%s>", c.cfg.SIPUsername, localIP)))
-	req.SetTransport("UDP")
-	slog.DebugContext(ctx, "SIP: contact header set", "local_ip", localIP)
+	req.SetTransport(c.transport())
+	slog.DebugContext(ctx, "SIP: contact header set", "local_ip", localIP, "transport", c.transport())
 
 	tx, err := client.TransactionRequest(ctx, req, sipgo.ClientRequestRegisterBuild)
 	if err != nil {
@@ -301,8 +301,8 @@ func (c *Client) MakeCall(ctx context.Context, to string, offer json.RawMessage)
 	localIP := c.localIP()
 	req.AppendHeader(sipmsg.NewHeader("Contact",
 		fmt.Sprintf("<sip:%s@%s>", c.cfg.SIPUsername, localIP)))
-	req.SetTransport("UDP")
-	slog.DebugContext(ctx, "SIP: INVITE request built", "to", recipientURI.String())
+	req.SetTransport(c.transport())
+	slog.DebugContext(ctx, "SIP: INVITE request built", "to", recipientURI.String(), "transport", c.transport())
 
 	// Log outbound request details so CSeq and other headers are visible at debug level.
 	hdrs := req.Headers()
@@ -399,4 +399,18 @@ func (c *Client) localIP() string {
 		}
 	}
 	return "127.0.0.1"
+}
+
+// transport returns the configured SIP transport protocol in upper-case,
+// defaulting to "UDP" when not set or invalid.
+func (c *Client) transport() string {
+	switch c.cfg.SIPTransport {
+	case "TCP":
+		return "TCP"
+	case "UDP", "":
+		return "UDP"
+	default:
+		slog.Warn("SIP: unrecognised transport configured, falling back to UDP", "configured", c.cfg.SIPTransport)
+		return "UDP"
+	}
 }

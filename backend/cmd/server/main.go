@@ -24,19 +24,21 @@ func main() {
 			&cli.StringFlag{Name: "sip-username", EnvVars: []string{"SIP_USERNAME"}, Usage: "SIP username", Required: true},
 			&cli.StringFlag{Name: "sip-password", EnvVars: []string{"SIP_PASSWORD"}, Usage: "SIP password", Required: true},
 			&cli.StringFlag{Name: "sip-domain", EnvVars: []string{"SIP_DOMAIN"}, Usage: "SIP domain", Required: true},
+			&cli.StringFlag{Name: "sip-transport", EnvVars: []string{"SIP_TRANSPORT"}, Value: "UDP", Usage: "SIP transport protocol (UDP or TCP)"},
 			&cli.StringFlag{Name: "listen-addr", EnvVars: []string{"LISTEN_ADDR"}, Value: ":8080", Usage: "HTTP listen address"},
 			&cli.StringFlag{Name: "log-level", EnvVars: []string{"LOG_LEVEL"}, Value: "info", Usage: "Log level (debug, info, warn, error)"},
 			&cli.StringFlag{Name: "api-base-path", EnvVars: []string{"API_BASE_PATH"}, Value: "/api", Usage: "Base path for API endpoints"},
 		},
 		Action: func(c *cli.Context) error {
 			cfg := &config.Config{
-				SIPServer:   c.String("sip-server"),
-				SIPUsername: c.String("sip-username"),
-				SIPPassword: c.String("sip-password"),
-				SIPDomain:   c.String("sip-domain"),
-				ListenAddr:  c.String("listen-addr"),
-				LogLevel:    c.String("log-level"),
-				APIBasePath: c.String("api-base-path"),
+				SIPServer:    c.String("sip-server"),
+				SIPUsername:  c.String("sip-username"),
+				SIPPassword:  c.String("sip-password"),
+				SIPDomain:    c.String("sip-domain"),
+				SIPTransport: c.String("sip-transport"),
+				ListenAddr:   c.String("listen-addr"),
+				LogLevel:     c.String("log-level"),
+				APIBasePath:  c.String("api-base-path"),
 			}
 
 			// Set up slog
@@ -66,6 +68,10 @@ func main() {
 			}
 			if cfg.SIPDomain == "" {
 				return fmt.Errorf("SIP_DOMAIN is required but not configured")
+			}
+			transport := cfg.SIPTransport
+			if transport != "UDP" && transport != "TCP" {
+				return fmt.Errorf("invalid SIP_TRANSPORT %q: must be UDP or TCP", transport)
 			}
 
 			slog.Info("starting webrtc-backend", "listen", cfg.ListenAddr, "log-level", cfg.LogLevel, "api-base-path", cfg.APIBasePath)

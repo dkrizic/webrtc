@@ -64,6 +64,14 @@
                 break;
             case 'error':
                 console.error('[App] server error:', msg.data);
+                UI.addCallLogEntry('Call failed: ' + (msg.data || 'unknown error'));
+                if (currentCall) {
+                    WebRTCClient.hangup();
+                    UI.hideActiveCall();
+                    UI.hideIncomingCall();
+                    currentCall = null;
+                    pendingOffer = null;
+                }
                 break;
         }
     });
