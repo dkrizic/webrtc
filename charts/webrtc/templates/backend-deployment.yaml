@@ -17,6 +17,8 @@ spec:
         {{- include "webrtc.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
     spec:
+      hostNetwork: {{ .Values.backend.hostNetwork }}
+      dnsPolicy: {{ .Values.backend.dnsPolicy }}
       containers:
         - name: backend
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"

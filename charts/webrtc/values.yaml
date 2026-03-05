@@ -24,6 +24,8 @@ backend:
       value: "/api"
   envFrom: []
   resources: {}
+  hostNetwork: false
+  dnsPolicy: ClusterFirst
 
 frontend:
   image:
