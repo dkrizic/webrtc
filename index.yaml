@@ -2,8 +2,18 @@ apiVersion: v1
 entries:
   webrtc:
   - apiVersion: v2
+    appVersion: 0.2.8
+    created: "2026-03-05T15:26:38.94430949Z"
+    description: A Helm chart for the WebRTC SIP telephony application
+    digest: 3bbc39a756b50b8a74eee555075016abb82dd99dc363dd16f4b8bb8be2ba9d83
+    name: webrtc
+    type: application
+    urls:
+    - https://dkrizic.github.io/webrtc/webrtc-0.2.8.tgz
+    version: 0.2.8
+  - apiVersion: v2
     appVersion: 0.2.7
-    created: "2026-03-05T14:30:35.704238461Z"
+    created: "2026-03-05T15:26:38.943874547Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: b7e88f88ea32f02457266fccb27bf643c568b8fe41d0c4f740414baefd3b513d
     name: webrtc
@@ -13,7 +23,7 @@ entries:
     version: 0.2.7
   - apiVersion: v2
     appVersion: 0.2.6
-    created: "2026-03-05T14:30:35.703727971Z"
+    created: "2026-03-05T15:26:38.943548188Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: 482c2c032f9bca5e53117deb54c4f88237c3c2721f540ec290f960b18bae9cc9
     name: webrtc
@@ -23,7 +33,7 @@ entries:
     version: 0.2.6
   - apiVersion: v2
     appVersion: 0.2.5
-    created: "2026-03-05T14:30:35.703373596Z"
+    created: "2026-03-05T15:26:38.943218273Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: cc55452f2198cc8c7346fff0ab8035a29972197636de693aaa6900b796b9d899
     name: webrtc
@@ -33,7 +43,7 @@ entries:
     version: 0.2.5
   - apiVersion: v2
     appVersion: 0.2.4
-    created: "2026-03-05T14:30:35.703085687Z"
+    created: "2026-03-05T15:26:38.942844745Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: 4cd37ebe6f3c73c2f3962b467d67a4f5d7bf2ee1ab822bd8020355068995da39
     name: webrtc
@@ -43,7 +53,7 @@ entries:
     version: 0.2.4
   - apiVersion: v2
     appVersion: 0.2.3
-    created: "2026-03-05T14:30:35.702779106Z"
+    created: "2026-03-05T15:26:38.942513166Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: b9848e5458c761344ccb0165462f4f008a8db9de3253f14dfebbc81421f51901
     name: webrtc
@@ -53,7 +63,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 0.2.2
-    created: "2026-03-05T14:30:35.702508505Z"
+    created: "2026-03-05T15:26:38.942241579Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: d28bc814e1b9735ba2b98b0a45420ab2af06125568403efcdce6ba24e9a6fc48
     name: webrtc
@@ -63,7 +73,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 0.2.1
-    created: "2026-03-05T14:30:35.702216647Z"
+    created: "2026-03-05T15:26:38.941949925Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: c6702c0425558e77797d1d3b4e8898054c8d40d982421bc1fd2b0ca6a6b5c931
     name: webrtc
@@ -73,7 +83,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 0.2.0
-    created: "2026-03-05T14:30:35.701882766Z"
+    created: "2026-03-05T15:26:38.941601064Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: 6b704619a82f469cbe8e0c999688bb995c006c1a67cc9895a01c92111a8b5b11
     name: webrtc
@@ -83,7 +93,7 @@ entries:
     version: 0.2.0
   - apiVersion: v2
     appVersion: 0.1.4
-    created: "2026-03-05T14:30:35.701590592Z"
+    created: "2026-03-05T15:26:38.941297908Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: 48195064202aed9f9188b7a0244282e5a3cc46cf8301fe0608cd434bf1ed812c
     name: webrtc
@@ -93,7 +103,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 0.1.3
-    created: "2026-03-05T14:30:35.701257948Z"
+    created: "2026-03-05T15:26:38.940887001Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: 724d32a97c33456791e13224850a91a9b52cd187b067c633c13386e0b325c0e2
     name: webrtc
@@ -101,4 +111,4 @@ entries:
     urls:
     - https://dkrizic.github.io/webrtc/webrtc-0.1.0.tgz
     version: 0.1.0
-generated: "2026-03-05T14:30:35.700806014Z"
+generated: "2026-03-05T15:26:38.940414909Z"
