@@ -304,7 +304,20 @@ func (c *Client) MakeCall(ctx context.Context, to string, offer json.RawMessage)
 	req.SetTransport("UDP")
 	slog.DebugContext(ctx, "SIP: INVITE request built", "to", recipientURI.String())
 
-	tx, err := c.sipClient.TransactionRequest(ctx, req, sipgo.ClientRequestAddVia)
+	// Log outbound request details so CSeq and other headers are visible at debug level.
+	hdrs := req.Headers()
+	hdrStrs := make([]string, len(hdrs))
+	for i, h := range hdrs {
+		hdrStrs[i] = h.String()
+	}
+	slog.DebugContext(ctx, "SIP: outbound request headers",
+		"method", req.Method,
+		"uri", req.Recipient.String(),
+		"headers", hdrStrs,
+		"body_size", len(req.Body()),
+	)
+
+	tx, err := c.sipClient.TransactionRequest(ctx, req, sipgo.ClientRequestIncreaseCSEQ, sipgo.ClientRequestAddVia)
 	if err != nil {
 		slog.ErrorContext(ctx, "SIP: INVITE transaction failed", "error", err)
 		return fmt.Errorf("SIP INVITE transaction failed: %w", err)
