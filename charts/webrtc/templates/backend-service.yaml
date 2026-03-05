@@ -12,6 +12,10 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.backend.sip.port }}
+      targetPort: sip
+      protocol: UDP
+      name: sip
   selector:
     {{- include "webrtc.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: backend

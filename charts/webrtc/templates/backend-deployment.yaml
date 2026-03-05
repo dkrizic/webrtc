@@ -25,6 +25,9 @@ spec:
             - name: http
               containerPort: {{ .Values.backend.service.port }}
               protocol: TCP
+            - name: sip
+              containerPort: {{ .Values.backend.sip.port }}
+              protocol: UDP
           {{- with .Values.backend.env }}
           env:
             {{- toYaml . | nindent 12 }}

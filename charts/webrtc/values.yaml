@@ -7,6 +7,8 @@ backend:
   service:
     type: ClusterIP
     port: 8080
+  sip:
+    port: 5060
   env:
     - name: SIP_SERVER
       value: ""
@@ -39,7 +41,7 @@ frontend:
   resources: {}
 
 ingress:
-  enabled: false
+  enabled: true
   className: ""
   annotations: {}
   hosts:
@@ -55,3 +57,9 @@ ingress:
           pathType: Prefix
           service: frontend
   tls: []
+
+udpRoute:
+  enabled: false
+  gatewayName: traefik
+  gatewayNamespace: traefik
+  sectionName: sip
