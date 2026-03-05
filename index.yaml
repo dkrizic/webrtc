@@ -2,8 +2,18 @@ apiVersion: v1
 entries:
   webrtc:
   - apiVersion: v2
+    appVersion: 0.2.4
+    created: "2026-03-05T10:49:21.629885281Z"
+    description: A Helm chart for the WebRTC SIP telephony application
+    digest: 4cd37ebe6f3c73c2f3962b467d67a4f5d7bf2ee1ab822bd8020355068995da39
+    name: webrtc
+    type: application
+    urls:
+    - https://dkrizic.github.io/webrtc/webrtc-0.2.4.tgz
+    version: 0.2.4
+  - apiVersion: v2
     appVersion: 0.2.3
-    created: "2026-03-05T09:50:53.100864435Z"
+    created: "2026-03-05T10:49:21.629568879Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: b9848e5458c761344ccb0165462f4f008a8db9de3253f14dfebbc81421f51901
     name: webrtc
@@ -13,7 +23,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 0.2.2
-    created: "2026-03-05T09:50:53.100627525Z"
+    created: "2026-03-05T10:49:21.629298051Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: d28bc814e1b9735ba2b98b0a45420ab2af06125568403efcdce6ba24e9a6fc48
     name: webrtc
@@ -23,7 +33,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 0.2.1
-    created: "2026-03-05T09:50:53.100369729Z"
+    created: "2026-03-05T10:49:21.628998631Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: c6702c0425558e77797d1d3b4e8898054c8d40d982421bc1fd2b0ca6a6b5c931
     name: webrtc
@@ -33,7 +43,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 0.2.0
-    created: "2026-03-05T09:50:53.100061093Z"
+    created: "2026-03-05T10:49:21.628663493Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: 6b704619a82f469cbe8e0c999688bb995c006c1a67cc9895a01c92111a8b5b11
     name: webrtc
@@ -43,7 +53,7 @@ entries:
     version: 0.2.0
   - apiVersion: v2
     appVersion: 0.1.4
-    created: "2026-03-05T09:50:53.099779185Z"
+    created: "2026-03-05T10:49:21.628356298Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: 48195064202aed9f9188b7a0244282e5a3cc46cf8301fe0608cd434bf1ed812c
     name: webrtc
@@ -53,7 +63,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 0.1.3
-    created: "2026-03-05T09:50:53.099492563Z"
+    created: "2026-03-05T10:49:21.627967911Z"
     description: A Helm chart for the WebRTC SIP telephony application
     digest: 724d32a97c33456791e13224850a91a9b52cd187b067c633c13386e0b325c0e2
     name: webrtc
@@ -61,4 +71,4 @@ entries:
     urls:
     - https://dkrizic.github.io/webrtc/webrtc-0.1.0.tgz
     version: 0.1.0
-generated: "2026-03-05T09:50:53.09904025Z"
+generated: "2026-03-05T10:49:21.627504182Z"
