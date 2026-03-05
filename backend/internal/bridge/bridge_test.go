@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ type fakeSIP struct {
 		to    string
 		offer json.RawMessage
 	}
+	makeCallErr error // if set, MakeCall returns this error
 }
 
 func newFakeSIP() *fakeSIP {
@@ -36,7 +38,7 @@ func (f *fakeSIP) MakeCall(_ context.Context, to string, offer json.RawMessage) 
 		to    string
 		offer json.RawMessage
 	}{to: to, offer: offer})
-	return nil
+	return f.makeCallErr
 }
 func (f *fakeSIP) Incoming() <-chan IncomingCall { return f.incoming }
 
@@ -185,5 +187,49 @@ func TestBridge_RouteOffer_NoPendingTo(t *testing.T) {
 
 	if len(sip.makeCalls) != 0 {
 		t.Errorf("expected 0 MakeCall, got %d", len(sip.makeCalls))
+	}
+}
+
+func TestBridge_RouteOffer_MakeCallError_SendsErrorMessage(t *testing.T) {
+	hub := signaling.NewHub(nil)
+	sip := newFakeSIP()
+	sip.makeCallErr = fmt.Errorf("size of packet larger than MTU")
+	br := New(hub, sip)
+
+	ctx := context.Background()
+	br.Start(ctx) //nolint:errcheck
+
+	// First store the 'to' via TypeDial.
+	br.Route(signaling.Message{
+		Type:    signaling.TypeDial,
+		Payload: map[string]interface{}{"to": "+1234567890"},
+	}, func(signaling.Message) error { return nil })
+
+	// Collect sent messages.
+	var sent []signaling.Message
+	sendFn := func(msg signaling.Message) error {
+		sent = append(sent, msg)
+		return nil
+	}
+
+	// Send the offer — MakeCall will fail.
+	br.Route(signaling.Message{
+		Type:    signaling.TypeOffer,
+		Payload: map[string]interface{}{"sdp": "v=0\r\n"},
+	}, sendFn)
+
+	if len(sip.makeCalls) != 1 {
+		t.Fatalf("expected 1 MakeCall, got %d", len(sip.makeCalls))
+	}
+
+	// Expect exactly one error message sent back to the client.
+	if len(sent) != 1 {
+		t.Fatalf("expected 1 sent message, got %d", len(sent))
+	}
+	if sent[0].Type != signaling.TypeError {
+		t.Errorf("expected message type %q, got %q", signaling.TypeError, sent[0].Type)
+	}
+	if sent[0].Data == "" {
+		t.Error("expected non-empty error data in sent message")
 	}
 }

@@ -121,6 +121,8 @@ func (b *Bridge) Route(msg signaling.Message, send func(signaling.Message) error
 		slog.InfoContext(ctx, "Bridge: 📤 received offer, initiating outgoing SIP call", "to", to)
 		if err := b.sip.MakeCall(ctx, to, raw); err != nil {
 			slog.ErrorContext(ctx, "Bridge: MakeCall failed", "error", err)
+			_ = send(signaling.Message{Type: signaling.TypeError, Data: err.Error()})
+			return
 		}
 	case signaling.TypeAnswer:
 		if b.sip == nil {
